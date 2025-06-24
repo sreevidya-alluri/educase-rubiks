@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Rubik's Cube Visualizer</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+      margin: 0; 
+      padding: 20px; 
+      color: white;
+    }
+    .container { max-width: 1200px; margin: 0 auto; }
+    h1 { text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+    .controls-panel { 
+      background: rgba(255,255,255,0.1); 
+      backdrop-filter: blur(10px); 
+      border-radius: 15px; 
+      padding: 20px; 
+      margin-bottom: 20px; 
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .face-inputs { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+      gap: 15px; 
+      margin-bottom: 20px; 
+    }
+    .face-input-group { text-align: center; }
+    .face-input-group h3 { margin: 0 0 10px 0; }
+    .face-input { 
+      width: 100%; 
+      padding: 10px; 
+      font-size: 16px; 
+      border: none; 
+      border-radius: 8px; 
+      background: rgba(255,255,255,0.9); 
+      color: #333;
+    }
+    .button-group { text-align: center; margin: 20px 0; }
+    button { 
+      padding: 12px 24px; 
+      font-size: 16px; 
+      background: linear-gradient(45deg, #ff6b6b, #ee5a24); 
+      color: white; 
+      border: none; 
+      border-radius: 25px; 
+      cursor: pointer; 
+      margin: 5px; 
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    button:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3); 
+    }
+    .move-buttons { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); 
+      gap: 8px; 
+      margin-top: 15px; 
+    }
+    .move-buttons button { 
+      padding: 8px 12px; 
+      font-size: 14px; 
+      background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    }
+    #canvas-container { 
+      text-align: center; 
+      background: rgba(0,0,0,0.2); 
+      border-radius: 15px; 
+      padding: 20px; 
+      margin-top: 20px;
+    }
+    #status { 
+      text-align: center; 
+      font-size: 18px; 
+      margin: 15px 0; 
+      font-weight: bold; 
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    .info { 
+      background: rgba(255,255,255,0.1); 
+      padding: 15px; 
+      border-radius: 10px; 
+      margin-top: 15px; 
+      font-size: 14px; 
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎲 3D Rubik's Cube Visualizer</h1>
+    
+    <div class="controls-panel">
+      <p style="text-align: center; margin-bottom: 20px;">Enter 9 characters per face (g=Green, r=Red, w=White, y=Yellow, o=Orange, b=Blue)</p>
+      
+      <div class="face-inputs">
+        <div class="face-input-group">
+          <h3>Up (U)</h3>
+          <input id="U" class="face-input" maxlength="9" value="wwwwwwwww" placeholder="9 characters">
+        </div>
+        <div class="face-input-group">
+          <h3>Right (R)</h3>
+          <input id="R" class="face-input" maxlength="9" value="rrrrrrrrr" placeholder="9 characters">
+        </div>
+        <div class="face-input-group">
+          <h3>Front (F)</h3>
+          <input id="F" class="face-input" maxlength="9" value="ggggggggg" placeholder="9 characters">
+        </div>
+        <div class="face-input-group">
+          <h3>Down (D)</h3>
+          <input id="D" class="face-input" maxlength="9" value="yyyyyyyyy" placeholder="9 characters">
+        </div>
+        <div class="face-input-group">
+          <h3>Left (L)</h3>
+          <input id="L" class="face-input" maxlength="9" value="ooooooooo" placeholder="9 characters">
+        </div>
+        <div class="face-input-group">
+          <h3>Back (B)</h3>
+          <input id="B" class="face-input" maxlength="9" value="bbbbbbbbb" placeholder="9 characters">
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button onclick="initializeCube()">🎯 Initialize Cube</button>
+        <button onclick="scrambleCube()">🔀 Scramble</button>
+        <button onclick="resetToSolved()">✨ Reset to Solved</button>
+      </div>
+
+      <div id="move-controls" style="display: none;">
+        <h3 style="text-align: center; margin-bottom: 15px;">Apply Moves:</h3>
+        <div class="move-buttons" id="moveButtons"></div>
+      </div>
+    </div>
+
+    <div id="status">Enter cube configuration and click Initialize Cube</div>
+
+    <div id="canvas-container">
+      <div style="position: relative; display: inline-block;">
+        <canvas id="cubeCanvas" width="600" height="600"></canvas>
+        <div class="info">
+          <strong>Controls:</strong> Click and drag to rotate view • Use move buttons to manipulate cube
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    let scene, camera, renderer, cubeGroup, raycaster, mouse;
+    let isMouseDown = false, previousMousePosition = { x: 0, y: 0 };
+    let animating = false;
+
+    const MOVES = ['U', "U'", 'U2', 'R', "R'", 'R2', 'F', "F'", 'F2', 'D', "D'", 'D2', 'L', "L'", 'L2', 'B', "B'", 'B2'];
+    
+    // Cube state - each face has 9 squares (0-8)
+    let cubeState = {
+      U: 'wwwwwwwww', // Up (white)
+      R: 'rrrrrrrrr', // Right (red)  
+      F: 'ggggggggg', // Front (green)
+      D: 'yyyyyyyyy', // Down (yellow)
+      L: 'ooooooooo', // Left (orange)
+      B: 'bbbbbbbbb'  // Back (blue)
+    };
+
+    // Color mapping
+    const colorMap = {
+      'w': 0xffffff, // white
+      'r': 0xff0000, // red
+      'g': 0x00ff00, // green
+      'y': 0xffff00, // yellow
+      'o': 0xff7f00, // orange
+      'b': 0x0000ff  // blue
+    };
+
+    function init3D() {
+      const canvas = document.getElementById('cubeCanvas');
+      
+      // Scene setup
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x222222);
+      
+      // Camera setup
+      camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+      camera.position.set(4, 4, 4);
+      camera.lookAt(0, 0, 0);
+      
+      // Renderer setup
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+      renderer.setSize(600, 600);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+      scene.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(10, 10, 5);
+      directionalLight.castShadow = true;
+      scene.add(directionalLight);
+      
+      // Mouse controls
+      raycaster = new THREE.Raycaster();
+      mouse = new THREE.Vector2();
+      
+      setupMouseControls();
+      createCube();
+      animate();
+    }
+
+    function setupMouseControls() {
+      const canvas = document.getElementById('cubeCanvas');
+      
+      canvas.addEventListener('mousedown', (event) => {
+        isMouseDown = true;
+        previousMousePosition = { x: event.clientX, y: event.clientY };
+      });
+      
+      canvas.addEventListener('mousemove', (event) => {
+        if (isMouseDown && !animating) {
+          const deltaX = event.clientX - previousMousePosition.x;
+          const deltaY = event.clientY - previousMousePosition.y;
+          
+          cubeGroup.rotation.y += deltaX * 0.01;
+          cubeGroup.rotation.x += deltaY * 0.01;
+          
+          previousMousePosition = { x: event.clientX, y: event.clientY };
+        }
+      });
+      
+      canvas.addEventListener('mouseup', () => {
+        isMouseDown = false;
+      });
+      
+      canvas.addEventListener('mouseleave', () => {
+        isMouseDown = false;
+      });
+    }
+
+    function createCube() {
+      if (cubeGroup) {
+        scene.remove(cubeGroup);
+      }
+      
+      cubeGroup = new THREE.Group();
+      
+      // Create 27 small cubes (3x3x3)
+      for (let x = -1; x <= 1; x++) {
+        for (let y = -1; y <= 1; y++) {
+          for (let z = -1; z <= 1; z++) {
+            // Skip center cube (not visible)
+            if (x === 0 && y === 0 && z === 0) continue;
+            
+            const smallCube = createSmallCube(x, y, z);
+            cubeGroup.add(smallCube);
+          }
+        }
+      }
+      
+      scene.add(cubeGroup);
+      updateCubeColors();
+    }
+
+    function createSmallCube(x, y, z) {
+      const geometry = new THREE.BoxGeometry(0.98, 0.98, 0.98);
+      const materials = [];
+      
+      // Create materials for each face
+      for (let i = 0; i < 6; i++) {
+        materials.push(new THREE.MeshLambertMaterial({ color: 0x333333 }));
+      }
+      
+      const cube = new THREE.Mesh(geometry, materials);
+      cube.position.set(x, y, z);
+      cube.userData = { x, y, z };
+      
+      // Add black edges
+      const edges = new THREE.EdgesGeometry(geometry);
+      const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+      const wireframe = new THREE.LineSegments(edges, edgeMaterial);
+      cube.add(wireframe);
+      
+      return cube;
+    }
+
+    function updateCubeColors() {
+      cubeGroup.children.forEach(cube => {
+        const { x, y, z } = cube.userData;
+        
+        // Right face (x = 1)
+        if (x === 1) {
+          const index = getFaceIndex('R', y, z);
+          cube.material[0].color.setHex(colorMap[cubeState.R[index]]);
+        }
+        
+        // Left face (x = -1)  
+        if (x === -1) {
+          const index = getFaceIndex('L', y, z);
+          cube.material[1].color.setHex(colorMap[cubeState.L[index]]);
+        }
+        
+        // Top face (y = 1)
+        if (y === 1) {
+          const index = getFaceIndex('U', z, x);
+          cube.material[2].color.setHex(colorMap[cubeState.U[index]]);
+        }
+        
+        // Bottom face (y = -1)
+        if (y === -1) {
+          const index = getFaceIndex('D', z, x);
+          cube.material[3].color.setHex(colorMap[cubeState.D[index]]);
+        }
+        
+        // Front face (z = 1)
+        if (z === 1) {
+          const index = getFaceIndex('F', y, x);
+          cube.material[4].color.setHex(colorMap[cubeState.F[index]]);
+        }
+        
+        // Back face (z = -1)
+        if (z === -1) {
+          const index = getFaceIndex('B', y, x);
+          cube.material[5].color.setHex(colorMap[cubeState.B[index]]);
+        }
+      });
+    }
+
+    function getFaceIndex(face, coord1, coord2) {
+      // Convert 3D coordinates to face index (0-8)
+      const row = coord1 === 1 ? 0 : coord1 === 0 ? 1 : 2;
+      const col = coord2 === -1 ? 0 : coord2 === 0 ? 1 : 2;
+      return row * 3 + col;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+
+    // Cube manipulation functions
+    function rotateFaceClockwise(faceString) {
+      const face = faceString.split('');
+      return [face[6], face[3], face[0], face[7], face[4], face[1], face[8], face[5], face[2]].join('');
+    }
+
+    function rotateFaceCounterClockwise(faceString) {
+      const face = faceString.split('');
+      return [face[2], face[5], face[8], face[1], face[4], face[7], face[0], face[3], face[6]].join('');
+    }
+
+    function applyMove(move) {
+      if (animating) return;
+      
+      animating = true;
+      document.getElementById('status').textContent = `Applying move: ${move}`;
+      
+      // Apply the move logic
+      switch (move) {
+        case 'U':
+          cubeState.U = rotateFaceClockwise(cubeState.U);
+          rotateAdjacentEdges('U', true);
+          break;
+        case "U'":
+          cubeState.U = rotateFaceCounterClockwise(cubeState.U);
+          rotateAdjacentEdges('U', false);
+          break;
+        case 'U2':
+          cubeState.U = rotateFaceClockwise(rotateFaceClockwise(cubeState.U));
+          rotateAdjacentEdges('U', true);
+          rotateAdjacentEdges('U', true);
+          break;
+        case 'R':
+          cubeState.R = rotateFaceClockwise(cubeState.R);
+          rotateAdjacentEdges('R', true);
+          break;
+        case "R'":
+          cubeState.R = rotateFaceCounterClockwise(cubeState.R);
+          rotateAdjacentEdges('R', false);
+          break;
+        case 'R2':
+          cubeState.R = rotateFaceClockwise(rotateFaceClockwise(cubeState.R));
+          rotateAdjacentEdges('R', true);
+          rotateAdjacentEdges('R', true);
+          break;
+        case 'F':
+          cubeState.F = rotateFaceClockwise(cubeState.F);
+          rotateAdjacentEdges('F', true);
+          break;
+        case "F'":
+          cubeState.F = rotateFaceCounterClockwise(cubeState.F);
+          rotateAdjacentEdges('F', false);
+          break;
+        case 'F2':
+          cubeState.F = rotateFaceClockwise(rotateFaceClockwise(cubeState.F));
+          rotateAdjacentEdges('F', true);
+          rotateAdjacentEdges('F', true);
+          break;
+        case 'D':
+          cubeState.D = rotateFaceClockwise(cubeState.D);
+          rotateAdjacentEdges('D', true);
+          break;
+        case "D'":
+          cubeState.D = rotateFaceCounterClockwise(cubeState.D);
+          rotateAdjacentEdges('D', false);
+          break;
+        case 'D2':
+          cubeState.D = rotateFaceClockwise(rotateFaceClockwise(cubeState.D));
+          rotateAdjacentEdges('D', true);
+          rotateAdjacentEdges('D', true);
+          break;
+        case 'L':
+          cubeState.L = rotateFaceClockwise(cubeState.L);
+          rotateAdjacentEdges('L', true);
+          break;
+        case "L'":
+          cubeState.L = rotateFaceCounterClockwise(cubeState.L);
+          rotateAdjacentEdges('L', false);
+          break;
+        case 'L2':
+          cubeState.L = rotateFaceClockwise(rotateFaceClockwise(cubeState.L));
+          rotateAdjacentEdges('L', true);
+          rotateAdjacentEdges('L', true);
+          break;
+        case 'B':
+          cubeState.B = rotateFaceClockwise(cubeState.B);
+          rotateAdjacentEdges('B', true);
+          break;
+        case "B'":
+          cubeState.B = rotateFaceCounterClockwise(cubeState.B);
+          rotateAdjacentEdges('B', false);
+          break;
+        case 'B2':
+          cubeState.B = rotateFaceClockwise(rotateFaceClockwise(cubeState.B));
+          rotateAdjacentEdges('B', true);
+          rotateAdjacentEdges('B', true);
+          break;
+        default:
+          console.log(`Move ${move} not implemented`);
+      }
+      
+      updateCubeColors();
+      
+      setTimeout(() => {
+        animating = false;
+        document.getElementById('status').textContent = `Move completed: ${move}`;
+      }, 300);
+    }
+
+    function rotateAdjacentEdges(face, clockwise) {
+      // This function handles the rotation of adjacent edges when a face is turned
+      let temp;
+      
+      switch (face) {
+        case 'U': // Up face
+          if (clockwise) {
+            temp = [cubeState.F[0], cubeState.F[1], cubeState.F[2]];
+            [cubeState.F[0], cubeState.F[1], cubeState.F[2]] = [cubeState.R[0], cubeState.R[1], cubeState.R[2]];
+            [cubeState.R[0], cubeState.R[1], cubeState.R[2]] = [cubeState.B[0], cubeState.B[1], cubeState.B[2]];
+            [cubeState.B[0], cubeState.B[1], cubeState.B[2]] = [cubeState.L[0], cubeState.L[1], cubeState.L[2]];
+            [cubeState.L[0], cubeState.L[1], cubeState.L[2]] = temp;
+          } else {
+            temp = [cubeState.F[0], cubeState.F[1], cubeState.F[2]];
+            [cubeState.F[0], cubeState.F[1], cubeState.F[2]] = [cubeState.L[0], cubeState.L[1], cubeState.L[2]];
+            [cubeState.L[0], cubeState.L[1], cubeState.L[2]] = [cubeState.B[0], cubeState.B[1], cubeState.B[2]];
+            [cubeState.B[0], cubeState.B[1], cubeState.B[2]] = [cubeState.R[0], cubeState.R[1], cubeState.R[2]];
+            [cubeState.R[0], cubeState.R[1], cubeState.R[2]] = temp;
+          }
+          break;
+          
+        case 'D': // Down face
+          if (clockwise) {
+            temp = [cubeState.F[6], cubeState.F[7], cubeState.F[8]];
+            [cubeState.F[6], cubeState.F[7], cubeState.F[8]] = [cubeState.L[6], cubeState.L[7], cubeState.L[8]];
+            [cubeState.L[6], cubeState.L[7], cubeState.L[8]] = [cubeState.B[6], cubeState.B[7], cubeState.B[8]];
+            [cubeState.B[6], cubeState.B[7], cubeState.B[8]] = [cubeState.R[6], cubeState.R[7], cubeState.R[8]];
+            [cubeState.R[6], cubeState.R[7], cubeState.R[8]] = temp;
+          } else {
+            temp = [cubeState.F[6], cubeState.F[7], cubeState.F[8]];
+            [cubeState.F[6], cubeState.F[7], cubeState.F[8]] = [cubeState.R[6], cubeState.R[7], cubeState.R[8]];
+            [cubeState.R[6], cubeState.R[7], cubeState.R[8]] = [cubeState.B[6], cubeState.B[7], cubeState.B[8]];
+            [cubeState.B[6], cubeState.B[7], cubeState.B[8]] = [cubeState.L[6], cubeState.L[7], cubeState.L[8]];
+            [cubeState.L[6], cubeState.L[7], cubeState.L[8]] = temp;
+          }
+          break;
+          
+        case 'R': // Right face
+          if (clockwise) {
+            temp = [cubeState.F[2], cubeState.F[5], cubeState.F[8]];
+            [cubeState.F[2], cubeState.F[5], cubeState.F[8]] = [cubeState.D[2], cubeState.D[5], cubeState.D[8]];
+            [cubeState.D[2], cubeState.D[5], cubeState.D[8]] = [cubeState.B[6], cubeState.B[3], cubeState.B[0]];
+            [cubeState.B[6], cubeState.B[3], cubeState.B[0]] = [cubeState.U[2], cubeState.U[5], cubeState.U[8]];
+            [cubeState.U[2], cubeState.U[5], cubeState.U[8]] = temp;
+          } else {
+            temp = [cubeState.F[2], cubeState.F[5], cubeState.F[8]];
+            [cubeState.F[2], cubeState.F[5], cubeState.F[8]] = [cubeState.U[2], cubeState.U[5], cubeState.U[8]];
+            [cubeState.U[2], cubeState.U[5], cubeState.U[8]] = [cubeState.B[6], cubeState.B[3], cubeState.B[0]];
+            [cubeState.B[6], cubeState.B[3], cubeState.B[0]] = [cubeState.D[2], cubeState.D[5], cubeState.D[8]];
+            [cubeState.D[2], cubeState.D[5], cubeState.D[8]] = temp;
+          }
+          break;
+          
+        case 'L': // Left face
+          if (clockwise) {
+            temp = [cubeState.F[0], cubeState.F[3], cubeState.F[6]];
+            [cubeState.F[0], cubeState.F[3], cubeState.F[6]] = [cubeState.U[0], cubeState.U[3], cubeState.U[6]];
+            [cubeState.U[0], cubeState.U[3], cubeState.U[6]] = [cubeState.B[8], cubeState.B[5], cubeState.B[2]];
+            [cubeState.B[8], cubeState.B[5], cubeState.B[2]] = [cubeState.D[0], cubeState.D[3], cubeState.D[6]];
+            [cubeState.D[0], cubeState.D[3], cubeState.D[6]] = temp;
+          } else {
+            temp = [cubeState.F[0], cubeState.F[3], cubeState.F[6]];
+            [cubeState.F[0], cubeState.F[3], cubeState.F[6]] = [cubeState.D[0], cubeState.D[3], cubeState.D[6]];
+            [cubeState.D[0], cubeState.D[3], cubeState.D[6]] = [cubeState.B[8], cubeState.B[5], cubeState.B[2]];
+            [cubeState.B[8], cubeState.B[5], cubeState.B[2]] = [cubeState.U[0], cubeState.U[3], cubeState.U[6]];
+            [cubeState.U[0], cubeState.U[3], cubeState.U[6]] = temp;
+          }
+          break;
+          
+        case 'F': // Front face
+          if (clockwise) {
+            temp = [cubeState.U[6], cubeState.U[7], cubeState.U[8]];
+            [cubeState.U[6], cubeState.U[7], cubeState.U[8]] = [cubeState.L[8], cubeState.L[5], cubeState.L[2]];
+            [cubeState.L[8], cubeState.L[5], cubeState.L[2]] = [cubeState.D[2], cubeState.D[1], cubeState.D[0]];
+            [cubeState.D[2], cubeState.D[1], cubeState.D[0]] = [cubeState.R[0], cubeState.R[3], cubeState.R[6]];
+            [cubeState.R[0], cubeState.R[3], cubeState.R[6]] = temp;
+          } else {
+            temp = [cubeState.U[6], cubeState.U[7], cubeState.U[8]];
+            [cubeState.U[6], cubeState.U[7], cubeState.U[8]] = [cubeState.R[0], cubeState.R[3], cubeState.R[6]];
+            [cubeState.R[0], cubeState.R[3], cubeState.R[6]] = [cubeState.D[2], cubeState.D[1], cubeState.D[0]];
+            [cubeState.D[2], cubeState.D[1], cubeState.D[0]] = [cubeState.L[8], cubeState.L[5], cubeState.L[2]];
+            [cubeState.L[8], cubeState.L[5], cubeState.L[2]] = temp;
+          }
+          break;
+          
+        case 'B': // Back face
+          if (clockwise) {
+            temp = [cubeState.U[0], cubeState.U[1], cubeState.U[2]];
+            [cubeState.U[0], cubeState.U[1], cubeState.U[2]] = [cubeState.R[2], cubeState.R[5], cubeState.R[8]];
+            [cubeState.R[2], cubeState.R[5], cubeState.R[8]] = [cubeState.D[8], cubeState.D[7], cubeState.D[6]];
+            [cubeState.D[8], cubeState.D[7], cubeState.D[6]] = [cubeState.L[6], cubeState.L[3], cubeState.L[0]];
+            [cubeState.L[6], cubeState.L[3], cubeState.L[0]] = temp;
+          } else {
+            temp = [cubeState.U[0], cubeState.U[1], cubeState.U[2]];
+            [cubeState.U[0], cubeState.U[1], cubeState.U[2]] = [cubeState.L[6], cubeState.L[3], cubeState.L[0]];
+            [cubeState.L[6], cubeState.L[3], cubeState.L[0]] = [cubeState.D[8], cubeState.D[7], cubeState.D[6]];
+            [cubeState.D[8], cubeState.D[7], cubeState.D[6]] = [cubeState.R[2], cubeState.R[5], cubeState.R[8]];
+            [cubeState.R[2], cubeState.R[5], cubeState.R[8]] = temp;
+          }
+          break;
+      }
+    }
+
+    function validateCubeInput(cube) {
+      const allColors = cube.U + cube.R + cube.F + cube.D + cube.L + cube.B;
+      if (allColors.length !== 54) return false;
+      
+      const colorCount = {};
+      for (let color of allColors) {
+        colorCount[color] = (colorCount[color] || 0) + 1;
+      }
+      
+      return Object.values(colorCount).every(count => count === 9);
+    }
+
+    function getInputCube() {
+      return {
+        U: document.getElementById('U').value.trim().toLowerCase(),
+        R: document.getElementById('R').value.trim().toLowerCase(),
+        F: document.getElementById('F').value.trim().toLowerCase(),
+        D: document.getElementById('D').value.trim().toLowerCase(),
+        L: document.getElementById('L').value.trim().toLowerCase(),
+        B: document.getElementById('B').value.trim().toLowerCase()
+      };
+    }
+
+    function initializeCube() {
+      const inputCube = getInputCube();
+      
+      if (!validateCubeInput(inputCube)) {
+        alert('Invalid cube configuration! Each color must appear exactly 9 times.');
+        return;
+      }
+      
+      cubeState = { ...inputCube };
+      updateCubeColors();
+      
+      document.getElementById('move-controls').style.display = 'block';
+      document.getElementById('status').textContent = 'Cube initialized! Use the move buttons to manipulate the cube.';
+      
+      renderMoveButtons();
+    }
+
+    function renderMoveButtons() {
+      const container = document.getElementById('moveButtons');
+      container.innerHTML = '';
+      
+      MOVES.forEach(move => {
+        const button = document.createElement('button');
+        button.textContent = move;
+        button.onclick = () => applyMove(move);
+        container.appendChild(button);
+      });
+    }
+
+    function scrambleCube() {
+      const scrambleMoves = [];
+      for (let i = 0; i < 20; i++) {
+        scrambleMoves.push(MOVES[Math.floor(Math.random() * MOVES.length)]);
+      }
+      
+      document.getElementById('status').textContent = `Scrambling: ${scrambleMoves.join(' ')}`;
+      
+      let i = 0;
+      const applyNextMove = () => {
+        if (i < scrambleMoves.length) {
+          applyMove(scrambleMoves[i]);
+          i++;
+          setTimeout(applyNextMove, 400);
+        } else {
+          document.getElementById('status').textContent = 'Cube scrambled!';
+        }
+      };
+      
+      applyNextMove();
+    }
+
+    function resetToSolved() {
+      cubeState = {
+        U: 'wwwwwwwww',
+        R: 'rrrrrrrrr', 
+        F: 'ggggggggg',
+        D: 'yyyyyyyyy',
+        L: 'ooooooooo',
+        B: 'bbbbbbbbb'
+      };
+      
+      // Update input fields
+      document.getElementById('U').value = cubeState.U;
+      document.getElementById('R').value = cubeState.R;
+      document.getElementById('F').value = cubeState.F;
+      document.getElementById('D').value = cubeState.D;
+      document.getElementById('L').value = cubeState.L;
+      document.getElementById('B').value = cubeState.B;
+      
+      updateCubeColors();
+      document.getElementById('status').textContent = 'Cube reset to solved state!';
+    }
+
+    // Initialize when page loads
+    window.onload = () => {
+      init3D();
+      document.getElementById('status').textContent = 'Ready! Enter your cube configuration and click Initialize Cube.';
+    };
+  </script>
+</body>
+</html>
