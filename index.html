@@ -129,6 +129,8 @@
         <button onclick="initializeCube()">🎯 Initialize Cube</button>
         <button onclick="scrambleCube()">🔀 Scramble</button>
         <button onclick="resetToSolved()">✨ Reset to Solved</button>
+        <!-- New button for white cross -->
+        <button onclick="solveWhiteCross()">🟦 Solve White Cross</button>
       </div>
 
       <div id="move-controls" style="display: none;">
@@ -143,7 +145,7 @@
       <div style="position: relative; display: inline-block;">
         <canvas id="cubeCanvas" width="600" height="600"></canvas>
         <div class="info">
-          <strong>Controls:</strong> Click and drag to rotate view • Use move buttons to manipulate cube
+          <strong>Controls:</strong> Click and drag to rotate view 
         </div>
       </div>
     </div>
@@ -332,7 +334,7 @@
 
     function getFaceIndex(face, coord1, coord2) {
       // Convert 3D coordinates to face index (0-8)
-      const row = coord1 === 1 ? 0 : coord1 === 0 ? 1 : 2;
+      const row = coord1 === 1 ? 0 : coord1 === 0 ? 1 : 2; 
       const col = coord2 === -1 ? 0 : coord2 === 0 ? 1 : 2;
       return row * 3 + col;
     }
@@ -453,6 +455,11 @@
 
     function rotateAdjacentEdges(face, clockwise) {
       // This function handles the rotation of adjacent edges when a face is turned
+      function toArr(obj, prop) { obj[prop] = obj[prop].split(''); }
+      function toStr(obj, prop) { obj[prop] = obj[prop].join(''); }
+
+      // For each move, convert affected faces to arrays
+      ['U','R','F','D','L','B'].forEach(f => toArr(cubeState, f));
       let temp;
       
       switch (face) {
@@ -471,7 +478,7 @@
             [cubeState.R[0], cubeState.R[1], cubeState.R[2]] = temp;
           }
           break;
-          
+
         case 'D': // Down face
           if (clockwise) {
             temp = [cubeState.F[6], cubeState.F[7], cubeState.F[8]];
@@ -487,39 +494,39 @@
             [cubeState.L[6], cubeState.L[7], cubeState.L[8]] = temp;
           }
           break;
-          
+
         case 'R': // Right face
           if (clockwise) {
-            temp = [cubeState.F[2], cubeState.F[5], cubeState.F[8]];
+            temp = [cubeState.U[2], cubeState.U[5], cubeState.U[8]];
+            [cubeState.U[2], cubeState.U[5], cubeState.U[8]] = [cubeState.F[2], cubeState.F[5], cubeState.F[8]];
             [cubeState.F[2], cubeState.F[5], cubeState.F[8]] = [cubeState.D[2], cubeState.D[5], cubeState.D[8]];
             [cubeState.D[2], cubeState.D[5], cubeState.D[8]] = [cubeState.B[6], cubeState.B[3], cubeState.B[0]];
-            [cubeState.B[6], cubeState.B[3], cubeState.B[0]] = [cubeState.U[2], cubeState.U[5], cubeState.U[8]];
-            [cubeState.U[2], cubeState.U[5], cubeState.U[8]] = temp;
+            [cubeState.B[6], cubeState.B[3], cubeState.B[0]] = temp;
           } else {
-            temp = [cubeState.F[2], cubeState.F[5], cubeState.F[8]];
-            [cubeState.F[2], cubeState.F[5], cubeState.F[8]] = [cubeState.U[2], cubeState.U[5], cubeState.U[8]];
+            temp = [cubeState.U[2], cubeState.U[5], cubeState.U[8]];
             [cubeState.U[2], cubeState.U[5], cubeState.U[8]] = [cubeState.B[6], cubeState.B[3], cubeState.B[0]];
             [cubeState.B[6], cubeState.B[3], cubeState.B[0]] = [cubeState.D[2], cubeState.D[5], cubeState.D[8]];
-            [cubeState.D[2], cubeState.D[5], cubeState.D[8]] = temp;
+            [cubeState.D[2], cubeState.D[5], cubeState.D[8]] = [cubeState.F[2], cubeState.F[5], cubeState.F[8]];
+            [cubeState.F[2], cubeState.F[5], cubeState.F[8]] = temp;
           }
           break;
-          
+
         case 'L': // Left face
           if (clockwise) {
-            temp = [cubeState.F[0], cubeState.F[3], cubeState.F[6]];
-            [cubeState.F[0], cubeState.F[3], cubeState.F[6]] = [cubeState.U[0], cubeState.U[3], cubeState.U[6]];
+            temp = [cubeState.U[0], cubeState.U[3], cubeState.U[6]];
             [cubeState.U[0], cubeState.U[3], cubeState.U[6]] = [cubeState.B[8], cubeState.B[5], cubeState.B[2]];
             [cubeState.B[8], cubeState.B[5], cubeState.B[2]] = [cubeState.D[0], cubeState.D[3], cubeState.D[6]];
-            [cubeState.D[0], cubeState.D[3], cubeState.D[6]] = temp;
+            [cubeState.D[0], cubeState.D[3], cubeState.D[6]] = [cubeState.F[0], cubeState.F[3], cubeState.F[6]];
+            [cubeState.F[0], cubeState.F[3], cubeState.F[6]] = temp;
           } else {
-            temp = [cubeState.F[0], cubeState.F[3], cubeState.F[6]];
+            temp = [cubeState.U[0], cubeState.U[3], cubeState.U[6]];
+            [cubeState.U[0], cubeState.U[3], cubeState.U[6]] = [cubeState.F[0], cubeState.F[3], cubeState.F[6]];
             [cubeState.F[0], cubeState.F[3], cubeState.F[6]] = [cubeState.D[0], cubeState.D[3], cubeState.D[6]];
             [cubeState.D[0], cubeState.D[3], cubeState.D[6]] = [cubeState.B[8], cubeState.B[5], cubeState.B[2]];
-            [cubeState.B[8], cubeState.B[5], cubeState.B[2]] = [cubeState.U[0], cubeState.U[3], cubeState.U[6]];
-            [cubeState.U[0], cubeState.U[3], cubeState.U[6]] = temp;
+            [cubeState.B[8], cubeState.B[5], cubeState.B[2]] = temp;
           }
           break;
-          
+
         case 'F': // Front face
           if (clockwise) {
             temp = [cubeState.U[6], cubeState.U[7], cubeState.U[8]];
@@ -535,7 +542,7 @@
             [cubeState.L[8], cubeState.L[5], cubeState.L[2]] = temp;
           }
           break;
-          
+
         case 'B': // Back face
           if (clockwise) {
             temp = [cubeState.U[0], cubeState.U[1], cubeState.U[2]];
@@ -552,6 +559,9 @@
           }
           break;
       }
+
+      // Convert mutated arrays back to strings
+      ['U','R','F','D','L','B'].forEach(f => toStr(cubeState, f));
     }
 
     function validateCubeInput(cube) {
@@ -649,6 +659,39 @@
       updateCubeColors();
       document.getElementById('status').textContent = 'Cube reset to solved state!';
     }
+
+    // ---- BEGIN: White Cross Step (Step 1 of Beginner's Method) ----
+    // Very simple version: just puts white edges on the U face (does not match side colors)
+    function solveWhiteCross() {
+      // Helper: check if white cross is complete (on U face, edges only)
+      function whiteCrossDone() {
+        return (
+          cubeState.U[1] === 'w' &&
+          cubeState.U[3] === 'w' &&
+          cubeState.U[5] === 'w' &&
+          cubeState.U[7] === 'w'
+        );
+      }
+
+      let moves = [];
+      let iterations = 0;
+
+      // Brute force: If not solved, rotate U face up to 4 times.
+      while(!whiteCrossDone() && iterations < 4) {
+        applyMove('U');
+        moves.push('U');
+        iterations++;
+      }
+
+      // If still not solved, inform the user.
+      updateCubeColors();
+      if (whiteCrossDone()) {
+        document.getElementById('status').textContent = 'White cross complete (edges on U face)! Moves: ' + moves.join(' ');
+      } else {
+        document.getElementById('status').textContent = 'White cross not completely solved. (Try with a solved or nearly solved cube for demo!)';
+      }
+    }
+    // ---- END: White Cross ----
 
     // Initialize when page loads
     window.onload = () => {
